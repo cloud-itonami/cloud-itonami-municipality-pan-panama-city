@@ -1,0 +1,25 @@
+;; data/datascript-tx.edn — DataScript tx-data derived from src/ordinance/facts.cljc
+;; `ordinance.facts/catalog` (ADR-2607141700 Wave 0). Same shape as sibling files.
+
+[#:ordinance{:id "panama-city.ley-106-1973-regimen-municipal"
+             :title "Ley N.° 106, de 8 de octubre de 1973, Sobre Régimen Municipal"
+             :municipality "panama-city"
+             :country "PAN"
+             :kind :local-act
+             :number "Ley N.° 106 de 1973"
+             :url "https://s3-legispan.asamblea.gob.pa/legispan/NORMAS/1970/1973/LEY/Administrador%20Legispan_17458_1973_10_24_CONSEJO%20NACIONAL%20DE%20LEGISLACION_106.pdf"
+             :url-provenance :official-legispan-asamblea-gob-pa
+             :enacted-date "1973-10-08"
+             :retrieved-at "2026-07-18"
+             :topic [:governance]}
+ #:ordinance{:id "panama-city.founding-1519-08-15"
+             :title "Panama City founded 15 August 1519 by Pedro Arias Dávila (population of 100), corroborated by both en.wikipedia.org and es.wikipedia.org; NOTE: Wikidata Q3306's own inception statement lists 25 August 1519 instead -- the two-independent-language-Wikipedia date is used here"
+             :municipality "panama-city"
+             :country "PAN"
+             :kind :local-act
+             :number "1519"
+             :url "https://es.wikipedia.org/wiki/Ciudad_de_Panam%C3%A1"
+             :url-provenance :wikipedia-corroborated
+             :enacted-date "1519-08-15"
+             :retrieved-at "2026-07-18"
+             :topic [:governance]}]
