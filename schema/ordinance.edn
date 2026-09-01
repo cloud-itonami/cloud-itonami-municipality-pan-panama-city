@@ -1,6 +1,18 @@
 ;; schema/ordinance.edn — DataScript schema for `ordinance.facts` (ADR-2607141700).
-;; Identical shape to cloud-itonami-municipality-jpn-tokyo /
-;; -usa-washington-dc / ... / -prt-lisbon's schema/ordinance.edn.
+;; Same shape as cloud-itonami-municipality-jpn-tokyo /
+;; -usa-washington-dc / ... / -cze-prague's schema/ordinance.edn, plus the two
+;; attributes -prt-lisbon added 2026-09-01 for content-verified citations:
+;;
+;;   :ordinance/url-verified-phrase — a string quoted verbatim from the
+;;     document at :ordinance/url. `tools/verify_citations.cljs` refetches
+;;     the URL and fails unless the phrase is present, so a moved record or
+;;     a mistyped numsec turns the check red. A status-code check could not
+;;     do this: measured 2026-09-01,
+;;     infojuridica.procuraduria-admon.gob.pa/norma_screen.php?numsec=99999999
+;;     — a record id that does not exist — returns HTTP 200 with a
+;;     12,554-byte page and no `Título:` field.
+;;   :ordinance/gazette — the official publication reference (Gaceta Oficial
+;;     number and publication date) as printed in that document.
 
 {:ordinance/id {:db/unique :db.unique/identity}
  :ordinance/title {}
@@ -10,6 +22,8 @@
  :ordinance/number {}
  :ordinance/url {}
  :ordinance/url-provenance {:db/index true}
+ :ordinance/url-verified-phrase {}
+ :ordinance/gazette {}
  :ordinance/enacted-date {}
  :ordinance/retrieved-at {}
  :ordinance/topic {:db/cardinality :db.cardinality/many :db/index true}}
