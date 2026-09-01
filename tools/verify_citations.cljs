@@ -1,0 +1,187 @@
+#!/usr/bin/env nbb
+;; tools/verify_citations.cljs — re-fetch every :ordinance/url in
+;; data/datascript-tx.edn and confirm that :ordinance/url-verified-phrase
+;; is actually present in the document.
+;;
+;; ## Why not a status-code check
+;;
+;; Measured 2026-09-01 against this catalog's own hosts:
+;;
+;;   infojuridica.procuraduria-admon.gob.pa/norma_screen.php?numsec=99999999
+;;   — a record id that does not exist — answers HTTP 200 with a 12,554-byte
+;;   page. It is the site chrome with no `Título:` field, and byte-for-byte
+;;   it is a perfectly good HTTP success.
+;;
+;; So `curl -o /dev/null -w %{http_code}` against Infojurídica is a check
+;; that cannot fail, and eleven of this catalog's thirteen citations point
+;; at that host or at an S3 bucket that 404s only on a wrong *path*, never
+;; on wrong *content*. A green status-code run would be indistinguishable
+;; from no run at all. This verifier reads the document instead.
+;;
+;; ## What each host needs
+;;
+;;   s3-legispan.asamblea.gob.pa  application/pdf — LEGISPAN cover sheet,
+;;     read with pdftotext. Not every LEGISPAN scan has a text layer: Ley
+;;     349 de 2022's PDF is 8 pages whose only extractable text is the
+;;     watermark "Digitalizado por la Asamblea Nacional", repeated once per
+;;     page. Such a document cannot carry a verified phrase, so this catalog
+;;     cites the Infojurídica record for it instead of pretending the PDF
+;;     was read.
+;;
+;;     That case is detected by distinct lines, not by length. The first
+;;     draft of this file used a 200-character floor, and measuring it made
+;;     the floor untenable: the Ley 349 watermark extracts to 320 characters
+;;     while the Ley 106 cover sheet — a document this catalog does cite,
+;;     and the only page of that 6.8 MB scan with a text layer — extracts to
+;;     461. The two are 141 characters apart, so no threshold separates
+;;     them. Eight copies of one line, however, is not a document.
+;;   infojuridica.procuraduria-admon.gob.pa  text/html — tags stripped.
+;;   es.wikipedia.org  text/html — tags stripped.
+;;
+;; ## Exit codes are three-valued on purpose
+;;
+;;   0  every citation fetched AND its phrase found
+;;   1  at least one citation is wrong (phrase absent, or fetch failed)
+;;   2  REFUSED — could not answer (no entries, no pdftotext, nothing
+;;      scanned). Never reported as a pass.
+;;
+;; Nothing here works around bot detection. gacetaoficial.gob.pa answers
+;; with an Incapsula interstitial and is therefore not a source this
+;; catalog cites; see the ns docstring of src/ordinance/facts.cljc.
+;;
+;; Usage:  nbb tools/verify_citations.cljs [--only <ordinance-id>]
+
+(ns verify-citations
+  (:require ["fs" :as fs]
+            ["os" :as os]
+            ["path" :as path]
+            ["child_process" :as cp]
+            [clojure.string :as str]
+            [clojure.edn :as edn]))
+
+(def argv (vec (drop 2 (.-argv js/process))))
+(def only (second (drop-while #(not= "--only" %) argv)))
+
+(defn die! [code & msg]
+  (binding [*print-fn* *print-err-fn*] (apply println msg))
+  (.exit js/process code))
+
+(defn norm
+  "Collapse every run of whitespace to one space. PDF text arrives wrapped
+   at the column the gazette was typeset to, so a phrase quoted from the
+   page spans line breaks; comparing raw text would reject correct
+   citations. Non-breaking and narrow spaces are whitespace too."
+  [s]
+  (-> (or s "")
+      (str/replace #"[    ]" " ")
+      (str/replace #"\s+" " ")
+      str/trim))
+
+(defn strip-tags [s]
+  (-> s
+      (str/replace #"(?is)<(script|style)\b[^>]*>.*?</\1>" " ")
+      (str/replace #"(?s)<[^>]+>" " ")
+      (str/replace #"&nbsp;" " ")
+      (str/replace #"&aacute;" "á") (str/replace #"&eacute;" "é")
+      (str/replace #"&iacute;" "í") (str/replace #"&oacute;" "ó")
+      (str/replace #"&uacute;" "ú") (str/replace #"&ntilde;" "ñ")
+      (str/replace #"&Aacute;" "Á") (str/replace #"&Eacute;" "É")
+      (str/replace #"&Iacute;" "Í") (str/replace #"&Oacute;" "Ó")
+      (str/replace #"&Uacute;" "Ú") (str/replace #"&Ntilde;" "Ñ")
+      (str/replace #"&amp;" "&") (str/replace #"&quot;" "\"")))
+
+(defn charset-of [content-type]
+  (let [m (re-find #"(?i)charset=\s*\"?([\w-]+)" (or content-type ""))]
+    (str/lower-case (or (second m) "utf-8"))))
+
+(defn have-pdftotext? []
+  (try (cp/execSync "command -v pdftotext" #js {:stdio "ignore"}) true
+       (catch :default _ false)))
+
+(defn pdf->text [buf]
+  (let [f (path/join (os/tmpdir) (str "cite-" (rand-int 1e9) ".pdf"))]
+    (try
+      (fs/writeFileSync f buf)
+      (.toString (cp/execSync (str "pdftotext " (pr-str f) " -")
+                              #js {:maxBuffer (* 256 1024 1024)}))
+      (finally (try (fs/unlinkSync f) (catch :default _ nil))))))
+
+(defn fetch-text
+  "-> {:text s} | {:error msg}. The response body is kept on failure: a
+   check that throws away what the server said cannot explain itself."
+  [url]
+  (-> (js/fetch url #js {:redirect "follow"
+                         :headers #js {"user-agent" "cloud-itonami-municipality-pan-panama-city citation verifier"}})
+      (.then (fn [r]
+               (if-not (.-ok r)
+                 (.then (.text r) (fn [b] {:error (str "HTTP " (.-status r) " — " (subs (norm b) 0 200))}))
+                 (.then (.arrayBuffer r)
+                        (fn [ab]
+                          (let [buf (js/Buffer.from ab)
+                                ct (or (.get (.-headers r) "content-type") "")]
+                            (if (str/includes? ct "application/pdf")
+                              (let [t     (pdf->text buf)
+                                    lines (into #{} (remove str/blank? (map norm (str/split-lines t))))]
+                                ;; A LEGISPAN scan with no text layer yields
+                                ;; only the digitisation watermark, once per
+                                ;; page. Saying so is not the same as saying
+                                ;; the phrase is absent, and the difference is
+                                ;; what tells the reader to cite a different
+                                ;; document. See the header for why this is
+                                ;; counted in distinct lines and not in bytes.
+                                (if (<= (count lines) 1)
+                                  {:error (str "PDF has no usable text layer — pdftotext returned "
+                                               (count (norm t)) " chars across "
+                                               (count lines) " distinct line(s): "
+                                               (pr-str (first lines)))}
+                                  {:text t}))
+                              (let [s (.decode (js/TextDecoder. (charset-of ct)) buf)]
+                                (if (< (count s) 4000)
+                                  {:error (str "body is " (count s) " bytes of " ct
+                                               " — too small to be the cited document")}
+                                  {:text (strip-tags s)}))))))))) 
+      (.catch (fn [e] {:error (str "fetch failed: " (.-message e))}))))
+
+(defn -main []
+  (when-not (have-pdftotext?)
+    (die! 2 "REFUSED: pdftotext is not on PATH; the LEGISPAN citations are PDFs and cannot be read."
+          "\n  Install it (poppler) and re-run. Reporting a pass without reading them would be a lie."))
+  (let [f "data/datascript-tx.edn"]
+    (when-not (fs/existsSync f)
+      (die! 2 (str "REFUSED: " f " not found (run from the repo root).")))
+    (let [rows (edn/read-string (str (fs/readFileSync f "utf8")))
+          rows (if only (filterv #(= only (:ordinance/id %)) rows) rows)]
+      (when (empty? rows)
+        (die! 2 (str "REFUSED: 0 citations to check"
+                     (when only (str " (no ordinance with id " (pr-str only) ")"))
+                     " — an empty input is not a clean result.")))
+      (-> (js/Promise.all
+           (clj->js
+            (for [{:ordinance/keys [id url url-verified-phrase]} rows]
+              (if (str/blank? url-verified-phrase)
+                (js/Promise.resolve
+                 {:id id :ok false
+                  :why "no :ordinance/url-verified-phrase — this citation is UNVERIFIED, which is not the same as verified"})
+                (.then (fetch-text url)
+                       (fn [{:keys [text error]}]
+                         (cond
+                           error {:id id :ok false :why error}
+                           (str/includes? (norm text) (norm url-verified-phrase))
+                           {:id id :ok true :bytes (count text)}
+                           :else
+                           {:id id :ok false
+                            :why (str "fetched " (count text) " chars but the phrase "
+                                      (pr-str url-verified-phrase) " is not in them")})))))))
+          (.then (fn [rs]
+                   (let [rs (js->clj rs :keywordize-keys true)
+                         bad (remove :ok rs)]
+                     (doseq [{:keys [id ok why bytes]} rs]
+                       (println (if ok "OK  " "FAIL") id (if ok (str "(" bytes " chars)") (str "— " why))))
+                     (println (str "SCANNED\t" (count rs)))
+                     (when (zero? (count rs))
+                       (die! 2 "REFUSED: scanned 0 citations."))
+                     (println (str "VERIFIED\t" (- (count rs) (count bad))))
+                     (println (str "FAILED\t" (count bad)))
+                     (.exit js/process (if (seq bad) 1 0)))))))))
+
+(-main)
