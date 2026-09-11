@@ -45,7 +45,7 @@
   ## Every citation carries a phrase read out of the cited document
 
   :ordinance/url-verified-phrase is quoted verbatim from the document at
-  :ordinance/url. `tools/verify_citations.cljs` refetches each URL and
+  :ordinance/url. `tools/verify_citations.cljk` refetches each URL and
   fails unless the phrase is present.
 
   A status-code check could not do this job on these hosts. Measured
@@ -311,7 +311,7 @@
       :note (str "cloud-itonami-municipality-pan-panama-city (ADR-2607141700): "
                  (count (get catalog "panama-city")) " Panama City entries, each "
                  "with a verbatim phrase confirmed against the cited document "
-                 "(see tools/verify_citations.cljs). "
+                 "(see tools/verify_citations.cljk). "
                  "Extend `ordinance.facts/catalog`, never fabricate an id/url.")})))
 
 (defn by-topic [muni topic]
