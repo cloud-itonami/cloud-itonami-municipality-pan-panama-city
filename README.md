@@ -49,8 +49,8 @@ Every entry carries `:ordinance/url-verified-phrase`, quoted verbatim
 from the document at `:ordinance/url`.
 
 ```bash
-nbb tools/verify_citations.cljk                       # all 13
-nbb tools/verify_citations.cljk --only <ordinance-id> # one
+kbb --backend sci tools/verify_citations.cljk                       # all 13
+kbb --backend sci tools/verify_citations.cljk --only <ordinance-id> # one
 ```
 
 Exit codes are three-valued: `0` every phrase found, `1` at least one
@@ -121,7 +121,7 @@ no spec-basis in this repo.
 - `src/ordinance/facts.cljk` — the catalog, source of truth.
 - `schema/ordinance.edn` — DataScript schema.
 - `data/datascript-tx.edn` — **generated**, do not hand-edit. Regenerate
-  with `clojure -M -i tools/gen_tx.cljk`; `test/ordinance/facts_test.cljk`
+  with `kbb -M -i tools/gen_tx.cljk`; `test/ordinance/facts_test.cljk`
   fails if it drifts from the catalog. Query it alongside other
   `cloud-itonami`/`etzhayyim` compliance-fact sources via
   `com-junkawasaki/root`'s `scripts/compliance-fact-query.cljs`.
@@ -129,8 +129,8 @@ no spec-basis in this repo.
 - `tools/gen_tx.cljk` — the projection.
 
 ```bash
-clojure -M:test    # 14 tests, offline
-clojure -M:lint
+kbb -M:test    # 14 tests, offline
+kbb -M:lint
 ```
 
 ## License

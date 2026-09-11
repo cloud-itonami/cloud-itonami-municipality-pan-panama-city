@@ -86,7 +86,7 @@
 
 (deftest tx-data-is-derived-from-the-catalog
   ;; data/datascript-tx.edn is a projection of `catalog` (regenerate with
-  ;; `clojure -M -i tools/gen_tx.cljk`). Before 2026-09-01 there was no
+  ;; `kbb -M -i tools/gen_tx.cljk`). Before 2026-09-01 there was no
   ;; generator and the two were kept in step by hand. If the file is
   ;; hand-edited, or the catalog moves without regenerating, a consumer
   ;; querying the tx-data sees something this repo never asserted.

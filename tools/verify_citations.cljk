@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; tools/verify_citations.cljk — re-fetch every :ordinance/url in
 ;; data/datascript-tx.edn and confirm that :ordinance/url-verified-phrase
 ;; is actually present in the document.
@@ -49,7 +49,7 @@
 ;; with an Incapsula interstitial and is therefore not a source this
 ;; catalog cites; see the ns docstring of src/ordinance/facts.cljk.
 ;;
-;; Usage:  nbb tools/verify_citations.cljk [--only <ordinance-id>]
+;; Usage:  kbb --backend sci tools/verify_citations.cljk [--only <ordinance-id>]
 
 (ns verify-citations
   (:require ["fs" :as fs]
