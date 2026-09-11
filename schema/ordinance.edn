@@ -4,7 +4,7 @@
 ;; attributes -prt-lisbon added 2026-09-01 for content-verified citations:
 ;;
 ;;   :ordinance/url-verified-phrase — a string quoted verbatim from the
-;;     document at :ordinance/url. `tools/verify_citations.cljs` refetches
+;;     document at :ordinance/url. `tools/verify_citations.cljk` refetches
 ;;     the URL and fails unless the phrase is present, so a moved record or
 ;;     a mistyped numsec turns the check red. A status-code check could not
 ;;     do this: measured 2026-09-01,

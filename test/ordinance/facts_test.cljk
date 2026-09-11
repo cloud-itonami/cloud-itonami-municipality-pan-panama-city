@@ -34,7 +34,7 @@
   (is (= (count entries) (count (set (map :ordinance/id entries))))))
 
 (deftest every-citation-carries-a-verbatim-phrase
-  ;; The phrase is what `tools/verify_citations.cljs` looks for in the
+  ;; The phrase is what `tools/verify_citations.cljk` looks for in the
   ;; fetched document. An entry without one is UNVERIFIED, and this
   ;; catalog does not carry unverified citations.
   (doseq [{:ordinance/keys [id url-verified-phrase]} entries]
@@ -86,7 +86,7 @@
 
 (deftest tx-data-is-derived-from-the-catalog
   ;; data/datascript-tx.edn is a projection of `catalog` (regenerate with
-  ;; `clojure -M -i tools/gen_tx.clj`). Before 2026-09-01 there was no
+  ;; `clojure -M -i tools/gen_tx.cljk`). Before 2026-09-01 there was no
   ;; generator and the two were kept in step by hand. If the file is
   ;; hand-edited, or the catalog moves without regenerating, a consumer
   ;; querying the tx-data sees something this repo never asserted.
