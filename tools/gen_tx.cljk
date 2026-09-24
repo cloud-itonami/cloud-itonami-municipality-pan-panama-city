@@ -8,7 +8,7 @@
 ;; querying the tx-data would have seen something this repo never asserted.
 ;; `test/ordinance/facts_test.cljk` now fails if the two disagree.
 (require '[ordinance.facts :as facts]
-         '[clojure.pprint :as pp])
+         '[kotoba.pprint :as pp])
 
 (def rows
   (mapv (fn [o] (update o :ordinance/topic #(vec (sort %))))
